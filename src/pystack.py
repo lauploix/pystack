@@ -5,7 +5,22 @@ import ast
 def entries(entry_string):
     for entry in entry_string.strip().split(" "): yield entry
 
+class PyStack(list):
+    def plus(self):
+        last = self.pop()
+        previous = self.pop()
+        self.append (previous+last)
+
+    def minus(self):
+        last = self.pop()
+        previous = self.pop()
+        self.append (previous-last)
+
+
 def pystack(input_provider):
+
+
+
     """ROLL
 Moves a specified level to level 1
 ( e.g. 4 ROLL will move level 4 to level 1 )
@@ -19,18 +34,14 @@ Copies a specified number of levels again
 (e.g. 6 DUPN will copy the first six levels of the stack again)
 """
 
-    stack = []
+    stack = PyStack()
     print (stack)
     for input_string in input_provider:
         for entry in entries(input_string):
             if entry == "+":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append (previous+last)
+                stack.plus()
             elif entry == "-":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append (previous-last)
+                stack.minus()
             elif entry == "*":
                 last = stack.pop()
                 previous = stack.pop()
