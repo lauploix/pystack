@@ -8,38 +8,25 @@ class StackException(Exception):
 
 
 def token_finder(token_str):
-    in_single_quote = False
-    in_double_quote = False
+    SQ, DQ = "'", '"'
+    quote = None
     current_token = ""
     for token in token_str.split(" "):
-        if not in_single_quote and not in_double_quote:
-            if token.startswith("'") and token.endswith("'"):
-                yield token
-            elif token.startswith('"') and token.endswith('"'):
-                yield token
-            elif token.startswith("'"):
-                in_single_quote = True
-                current_token = token
-            elif token.startswith('"'):
-                in_double_quote = True
-                current_token = token
+        if quote is None:
+            if token[0] in (SQ, DQ):
+                if token[-1] == token[0] and len(token) > 1:
+                    yield token
+                else:
+                    quote = token[0]
+                    current_token = token
             else:
                 yield token
-        elif in_single_quote:
-            if token.endswith("'"):
-                in_single_quote = False
-                current_token += " " + token
+        else:
+            current_token += " " + token
+            if quote and token.endswith(quote):
+                quote = None
                 yield current_token
-            else:
-                current_token += " " + token
-        elif in_double_quote:
-            if token.endswith('"'):
-                in_double_quote = False
-                current_token += " " + token
-                yield current_token
-            else:
-                current_token += " " + token
-    if in_single_quote or in_double_quote:
+    if quote:
         raise StackException("Unclosed string")
 
 
