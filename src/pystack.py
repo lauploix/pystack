@@ -7,19 +7,70 @@ class StackException(Exception):
     pass
 
 
+def token_finder(token_str):
+    in_single_quote = False
+    in_double_quote = False
+    current_token = ""
+    for token in token_str.split(" "):
+        if not in_single_quote and not in_double_quote:
+            if token.startswith("'") and token.endswith("'"):
+                yield token
+            elif token.startswith('"') and token.endswith('"'):
+                yield token
+            elif token.startswith("'"):
+                in_single_quote = True
+                current_token = token
+            elif token.startswith('"'):
+                in_double_quote = True
+                current_token = token
+            else:
+                yield token
+        elif in_single_quote:
+            if token.endswith("'"):
+                in_single_quote = False
+                current_token += " " + token
+                yield current_token
+            else:
+                current_token += " " + token
+        elif in_double_quote:
+            if token.endswith('"'):
+                in_double_quote = False
+                current_token += " " + token
+                yield current_token
+            else:
+                current_token += " " + token
+    if in_single_quote or in_double_quote:
+        raise StackException("Unclosed string")
+
+
 class RpnStack:
     def __init__(self, iterable=None):
         self.__stack = []
         if iterable:
             self.__stack.extend(iterable)
         self.exec_map = {
-            "size": "_exec_size",
-            "+": "_exec_plus",
-            "-": "_exec_minus",
-            "*": "_exec_mult",
-            "/": "_exec_div",
-            "//": "_exec_divdiv",
-            "%": "_exec_percent",
+            "size": self._exec_size,
+            "+": self._exec_plus,
+            "-": self._exec_minus,
+            "*": self._exec_mult,
+            "**": self._exec_power,
+            "/": self._exec_div,
+            "//": self._exec_divdiv,
+            "%": self._exec_percent,
+            "swap": self._exec_swap,
+            "pick": self._exec_pick,
+            "drop": self._exec_drop,
+            "drop2": self._exec_drop2,
+            "drpn": self._exec_drpn,
+            "dup": self._exec_dup,
+            "dup2": self._exec_dup2,
+            "dupn": self._exec_dupn,
+            "over": self._exec_over,
+            "rot": self._exec_rot,
+            "roll": self._exec_roll,
+            "rolld": self._exec_rolld,
+            "clear": self._exec_clear,
+            "depth": self._exec_depth,
         }
         self.msg = ""
 
@@ -49,7 +100,13 @@ class RpnStack:
         self.msg = ""
 
         if tokens_string is not None:
-            tokens = tokens_string.split(" ")
+            if tokens_string == "":
+                return
+            try:
+                tokens = list(token_finder(tokens_string))
+            except StackException as e:
+                self.msg = str(e)
+                return
 
         if tokens is not None:
             for token in tokens:
@@ -60,7 +117,10 @@ class RpnStack:
 
         f_name = self.exec_map.get(token.lower())
         if f_name:
-            getattr(self, f_name)()
+            if type(f_name) is str:
+                getattr(self, f_name)()
+            else:
+                f_name()
         else:
             try:
                 value = ast.literal_eval(token)
@@ -76,6 +136,12 @@ class RpnStack:
             return [self.__stack.pop() for _ in range(n)][::-1]
         raise StackException()
 
+    # execute the swap operation
+    def _exec_swap(self):
+        (a, b) = self.__pop_as_list(2)
+        self.push(b)
+        self.push(a)
+
     # execute the size operation
     def _exec_size(self):
         self.push(self.size())
@@ -89,6 +155,11 @@ class RpnStack:
     def _exec_mult(self):
         (a, b) = self.__pop_as_list(2)
         self.push(a * b)
+
+    # execute the mult operation
+    def _exec_power(self):
+        (a, b) = self.__pop_as_list(2)
+        self.push(a**b)
 
     # execute the div operation
     def _exec_div(self):
@@ -110,6 +181,66 @@ class RpnStack:
         (a, b) = self.__pop_as_list(2)
         self.push(a - b)
 
+    # execute the pick
+    def _exec_pick(self):
+        self.push(self.__stack[-self.pop()])
+
+    # execute the depth
+    def _exec_depth(self):
+        self.push(len(self.__stack))
+
+    # execute the clear
+    def _exec_clear(self):
+        self.__stack = []
+
+    # execute the dup
+    def _exec_dup(self):
+        self.push(self.__stack[-1])
+
+    # execute the dup2
+    def _exec_dup2(self):
+        self.__stack.extend(self.__stack[-2:])
+
+    # execute the dupn
+    def _exec_dupn(self):
+        n = self.pop()
+        self.__stack.extend(self.__stack[-n:])
+
+    # execute the over
+    def _exec_over(self):
+        self.push(self.__stack[-2])
+
+    # execute the drop operation
+    def _exec_drop(self):
+        self.__stack.pop()
+
+    # execute the drop2
+    def _exec_drop2(self):
+        self.__stack = self.__stack[:-2]
+
+    # execute the drpn
+    def _exec_drpn(self):
+        n = self.pop()
+        self.__stack = self.__stack[:-n]
+
+    # execute the rot (== 3 roll)
+    def _exec_rot(self):
+        self.__stack[-3:] = self.__stack[-2:] + [
+            self.__stack[-3],
+        ]
+
+    # execute the roll
+    def _exec_roll(self):
+        n = self.pop()
+        self.__stack[-n:] = self.__stack[-(n - 1) :] + [
+            self.__stack[-n],
+        ]
+
+    # execute the rolld
+    def _exec_rolld(self):
+        n = self.pop()
+        self.__stack[-n:] = [self.__stack[-1]] + self.__stack[-n:-1]
+
     # dups the content of the stack, element by element
     def __iter__(self):
         return iter(self.__stack)
@@ -120,91 +251,16 @@ def entries(entry_string):
         yield entry
 
 
-def pystack(input_provider):
-    """ROLL
-    Moves a specified level to level 1
-    ( e.g. 4 ROLL will move level 4 to level 1 )
-    ROLLD
-    Moves level 1 to a specified level
-    ( e.g. 7 ROLLD will move level 1 to level 7 )
-    DEPTH
-    Counts the number of active levels in the stack placing
-    the number on level 1
-    DUPN
-    Copies a specified number of levels again
-    (e.g. 6 DUPN will copy the first six levels of the
-    stack again)"""
-
-    stack = []
-    print(stack)
-    for input_string in input_provider:
-        for entry in entries(input_string):
-            if entry == "+":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous + last)
-            elif entry == "-":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous - last)
-            elif entry == "*":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous * last)
-            elif entry == "/":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous / last)
-            elif entry == "%":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous % last)
-            elif entry == "**":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous**last)
-            elif entry == "//":
-                last = stack.pop()
-                previous = stack.pop()
-                stack.append(previous // last)
-            elif entry.lower() == "swap":
-                stack[-2:] = stack[-2:][::-1]
-            elif entry.lower() == "dup":
-                stack.append(stack[-1])
-            elif entry.lower() == "dup2":
-                stack.extend(stack[-2:])
-            elif entry.lower() == "over":
-                stack.append(stack[-2])
-            elif entry.lower() == "drop":
-                stack.pop()
-            elif entry.lower() == "drop2":
-                stack.pop()
-                stack.pop()
-            elif entry.lower() == "drpn":
-                for _ in range(stack.pop()):
-                    stack.pop()
-            elif entry.lower() == "rot":
-                stack[-3:] = stack[-2:] + [
-                    stack[-3],
-                ]
-            elif entry.lower() == "pick":
-                stack.append(stack[-stack.pop()])
-            else:
-                try:
-                    value = ast.literal_eval(entry)
-                    stack.append(value)
-                except ValueError:
-                    print(">> Value Error")
-                except SyntaxError:
-                    print(">> Syntax Error")
-        print(stack)
-    return stack
-
-
 if __name__ == "__main__":
+    s = RpnStack()
 
     def input_provider():
         while True:
             yield input()
 
-    pystack(input_provider())
+    print(list(s))
+    for i in input_provider():
+        s.exec(i)
+        if s.msg:
+            print(s.msg)
+        print(list(s))
