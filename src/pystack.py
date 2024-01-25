@@ -137,12 +137,6 @@ class RpnStack:
         self.push(b)
         self.push(a)
 
-    # execute the swap operation
-    def _exec_call(self):
-        (target, params) = self.__pop_as_list(2)
-        result = target(*params)
-        self.push(result)
-
     def _exec_e(self):
         self.push(np.e)
 

@@ -243,25 +243,6 @@ def test_create_object_class(stack):
     assert list(stack) == [object]
 
 
-def test_create_object_instance(stack):
-    stack.exec("'object'")
-    stack.exec("eval")
-    stack.exec("()")
-    assert list(stack) == [object, tuple()]
-    stack.exec("call")
-    assert len(stack) == 1
-    assert list(stack)[0].__class__ == object
-
-
-def test_create_instance_with_params(stack):
-    stack.exec("'list'")
-    stack.exec("eval")
-    stack.exec("((1, 'b'), )")
-    assert list(stack) == [list, ((1, "b"),)]
-    stack.exec("call")
-    assert list(stack) == [[1, "b"]]
-
-
 def test_parse_complex_structure(stack):
     stack.exec("{'a':123}, (2, 3, (4, 5, [], {}))")
     output = stack.pop()
