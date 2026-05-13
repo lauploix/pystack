@@ -156,3 +156,18 @@ def test_slots_preserved_across_constructor():
     s = RpnStack(slots={"y": 99})
     s.exec(tokens="'y' rcl".split())
     assert list(s) == [99]
+
+
+# --- imaginary unit constant ---------------------------------------------
+
+
+def test_imaginary_unit_pushes_1j():
+    s = RpnStack()
+    s.exec("i")
+    assert list(s) == [1j]
+
+
+def test_imaginary_unit_squared_is_minus_one():
+    s = RpnStack()
+    s.exec(tokens="i i *".split())
+    assert list(s) == [-1 + 0j]
