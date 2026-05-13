@@ -13,11 +13,12 @@ class StackException(Exception):
 
 
 class RpnStack:
-    def __init__(self, tokens=None, raises=False):
+    def __init__(self, tokens=None, raises=False, slots=None):
         self.__stack = []
         self.raises = raises
         if tokens:
             self.__stack.extend(tokens)
+        self.slots = slots if slots is not None else {}
         self.exec_map = {
             "+": self._exec_plus,
             "-": self._exec_minus,
@@ -109,9 +110,10 @@ class RpnStack:
                 self.exception = StackException(
                     f"Syntax Error: {token}", inner=e
                 )
-                self.exception
             except ValueError as e:
                 if not f:
+                    # Unknown token: not a registered op and not a
+                    # valid Python literal. Strings must be quoted.
                     self.exception = StackException(
                         f"Operation not found: {token}", inner=e
                     )
@@ -133,7 +135,7 @@ class RpnStack:
 
     # execute the swap operation
     def _exec_swap(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(b)
         self.push(a)
 
@@ -153,37 +155,37 @@ class RpnStack:
 
     # execute the plus operation
     def _exec_plus(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a + b)
 
     # execute the mult operation
     def _exec_mult(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a * b)
 
     # execute the mult operation
     def _exec_power(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a**b)
 
     # execute the div operation
     def _exec_div(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a / b)
 
     # execute the floordiv operation
     def _exec_floordiv(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a // b)
 
     # execute the percent operation
     def _exec_mod(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a % b)
 
     # execute the minus operation
     def _exec_minus(self):
-        (a, b) = self.__pop_as_list(2)
+        a, b = self.__pop_as_list(2)
         self.push(a - b)
 
     # execute the pick
@@ -252,6 +254,59 @@ class RpnStack:
     def _exec_rolld(self):
         n = self.pop()
         self.__stack[-n:] = [self.__stack[-1]] + self.__stack[-n:-1]
+
+    # convert top of stack to str
+    def _exec_str(self):
+        self.push(str(self.pop()))
+
+    # convert top of stack to int
+    def _exec_int(self):
+        self.push(int(self.pop()))
+
+    # convert top of stack to float
+    def _exec_float(self):
+        self.push(float(self.pop()))
+
+    # store: pop name (string), pop value, slots[name] = value
+    def _exec_sto(self):
+        name = self.pop()
+        value = self.pop()
+        if not isinstance(name, str):
+            self.push(value)
+            self.push(name)
+            raise ValueError(
+                f"sto: slot name must be a string, got "
+                f"{type(name).__name__}"
+            )
+        self.slots[name] = value
+
+    # recall: pop name (string), push slots[name]
+    def _exec_rcl(self):
+        name = self.pop()
+        if not isinstance(name, str):
+            self.push(name)
+            raise ValueError(
+                f"rcl: slot name must be a string, got "
+                f"{type(name).__name__}"
+            )
+        if name not in self.slots:
+            self.push(name)
+            raise KeyError(f"rcl: no such slot {name!r}")
+        self.push(self.slots[name])
+
+    # purge: pop name (string), delete slots[name]
+    def _exec_purge(self):
+        name = self.pop()
+        if not isinstance(name, str):
+            self.push(name)
+            raise ValueError(
+                f"purge: slot name must be a string, got "
+                f"{type(name).__name__}"
+            )
+        if name not in self.slots:
+            self.push(name)
+            raise KeyError(f"purge: no such slot {name!r}")
+        del self.slots[name]
 
     # dups the content of the stack, element by element
     def __iter__(self):
