@@ -1,15 +1,18 @@
 import argparse
 import sys
+from collections import deque
 
 from pystack.display import format_stack, format_value
-from pystack.engine import RpnStack, StackException
+from pystack.engine import UNDO_MAX, RpnStack, StackException
 from pystack.storage import (
     load_slots,
     load_stack,
+    load_undo,
     open_db,
     reset_stack,
     save_slots,
     save_stack,
+    save_undo,
 )
 
 
@@ -41,14 +44,15 @@ def build_parser():
     return p
 
 
-def _execute_atomic(stack_items, slots, tokens):
+def _execute_atomic(stack_items, slots, undo, tokens):
     rpn = RpnStack(
         tokens=list(stack_items),
         raises=True,
         slots=dict(slots),
+        undo=deque(undo, maxlen=UNDO_MAX),
     )
     rpn.exec(tokens=list(tokens))
-    return list(rpn), rpn.slots
+    return list(rpn), rpn.slots, rpn.undo
 
 
 def _print_stack(items):
@@ -60,13 +64,17 @@ def _print_stack(items):
 def _run_once(conn, tokens):
     stack_items = load_stack(conn)
     slots = load_slots(conn)
+    undo = load_undo(conn)
     try:
-        new_stack, new_slots = _execute_atomic(stack_items, slots, tokens)
+        new_stack, new_slots, new_undo = _execute_atomic(
+            stack_items, slots, undo, tokens
+        )
     except StackException as e:
         print(e.msg, file=sys.stderr)
         return 1
     save_stack(conn, new_stack)
     save_slots(conn, new_slots)
+    save_undo(conn, new_undo)
     _print_stack(new_stack)
     return 0
 
@@ -74,6 +82,7 @@ def _run_once(conn, tokens):
 def _run_repl(conn):
     stack_items = load_stack(conn)
     slots = load_slots(conn)
+    undo = load_undo(conn)
     _print_stack(stack_items)
     while True:
         try:
@@ -89,12 +98,15 @@ def _run_repl(conn):
             break
         tokens = line.split()
         try:
-            stack_items, slots = _execute_atomic(stack_items, slots, tokens)
+            stack_items, slots, undo = _execute_atomic(
+                stack_items, slots, undo, tokens
+            )
         except StackException as e:
             print(e.msg, file=sys.stderr)
             continue
         save_stack(conn, stack_items)
         save_slots(conn, slots)
+        save_undo(conn, undo)
         _print_stack(stack_items)
     return 0
 

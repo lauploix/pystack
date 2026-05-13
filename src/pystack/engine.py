@@ -1,6 +1,9 @@
 import ast
+from collections import deque
 
 import numpy as np
+
+UNDO_MAX = 1024
 
 # Inspired by http://www.quickclose.com.au/tut2.htm
 
@@ -13,12 +16,13 @@ class StackException(Exception):
 
 
 class RpnStack:
-    def __init__(self, tokens=None, raises=False, slots=None):
+    def __init__(self, tokens=None, raises=False, slots=None, undo=None):
         self.__stack = []
         self.raises = raises
         if tokens:
             self.__stack.extend(tokens)
         self.slots = slots if slots is not None else {}
+        self.undo = undo if undo is not None else deque(maxlen=UNDO_MAX)
         self.exec_map = {
             "+": self._exec_plus,
             "-": self._exec_minus,
@@ -74,6 +78,12 @@ class RpnStack:
                 # as if its string was entered as a command
                 # Is this what I want?
                 token = token or self.pop()
+
+                # Snapshot the current stack for `undo`, except when
+                # the operation itself is `undo` (which would be a
+                # self-recording loop).
+                if token.lower() != "undo":
+                    self.undo.append(list(self.__stack))
 
                 # First we check is there is a registered function
                 # or an _exec_ function
@@ -202,6 +212,12 @@ class RpnStack:
     # execute the clear
     def _exec_clear(self):
         self.__stack = []
+
+    # restore the stack to its state before the previous non-undo op
+    def _exec_undo(self):
+        if not self.undo:
+            raise ValueError("undo: nothing to undo")
+        self.__stack = self.undo.pop()
 
     # execute the dup
     def _exec_dup(self):

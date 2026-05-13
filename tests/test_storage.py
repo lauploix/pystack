@@ -1,12 +1,16 @@
+from collections import deque
+
 import numpy as np
 
 from pystack.storage import (
     load_slots,
     load_stack,
+    load_undo,
     open_db,
     reset_stack,
     save_slots,
     save_stack,
+    save_undo,
 )
 
 
@@ -138,5 +142,48 @@ def test_storage_round_trips_numpy_array(tmp_path):
         out = load_stack(conn)
         assert len(out) == 1
         assert np.array_equal(out[0], arr)
+    finally:
+        conn.close()
+
+
+def test_undo_round_trip(tmp_path):
+    conn = open_db(tmp_path / "x.db")
+    try:
+        snapshots = deque([[], [1], [1, 2]])
+        save_undo(conn, snapshots)
+        loaded = load_undo(conn)
+        assert list(loaded) == [[], [1], [1, 2]]
+    finally:
+        conn.close()
+
+
+def test_undo_load_returns_empty_deque_when_unset(tmp_path):
+    conn = open_db(tmp_path / "x.db")
+    try:
+        loaded = load_undo(conn)
+        assert list(loaded) == []
+    finally:
+        conn.close()
+
+
+def test_undo_save_overwrites(tmp_path):
+    conn = open_db(tmp_path / "x.db")
+    try:
+        save_undo(conn, deque([[1]]))
+        save_undo(conn, deque([[2], [3]]))
+        assert list(load_undo(conn)) == [[2], [3]]
+    finally:
+        conn.close()
+
+
+def test_undo_persists_across_connections(tmp_path):
+    db = tmp_path / "x.db"
+    conn = open_db(db)
+    save_undo(conn, deque([[1, 2], [1, 2, 3]]))
+    conn.close()
+
+    conn = open_db(db)
+    try:
+        assert list(load_undo(conn)) == [[1, 2], [1, 2, 3]]
     finally:
         conn.close()

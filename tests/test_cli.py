@@ -133,6 +133,34 @@ def test_purge_persists(db_path, capsys):
     assert slots == {}
 
 
+# --- undo ---------------------------------------------------------------
+
+
+def test_undo_persists_across_invocations(db_path, capsys):
+    run(db_path, "1", "2", "+", capsys=capsys)
+    rc, out, _ = run(db_path, "undo", capsys=capsys)
+    assert rc == 0
+    assert out == "1\n2\n"
+    stack, _ = read_state(db_path)
+    assert stack == [1, 2]
+
+
+def test_undo_chains_across_invocations(db_path, capsys):
+    run(db_path, "1", "2", "3", capsys=capsys)
+    run(db_path, "undo", capsys=capsys)
+    rc, out, _ = run(db_path, "undo", capsys=capsys)
+    assert rc == 0
+    assert out == "1\n"
+
+
+def test_undo_on_empty_undo_errors_and_rolls_back(db_path, capsys):
+    rc, _, err = run(db_path, "undo", capsys=capsys)
+    assert rc == 1
+    assert err
+    stack, _ = read_state(db_path)
+    assert stack == []
+
+
 # --- flags --------------------------------------------------------------
 
 
