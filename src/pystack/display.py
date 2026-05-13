@@ -11,5 +11,11 @@ def format_value(value):
     return repr(value)
 
 
+MAX_VISIBLE = 5
+
+
 def format_stack(items):
+    if len(items) > MAX_VISIBLE:
+        visible = items[-MAX_VISIBLE:]
+        return "\n".join(["..."] + [format_value(v) for v in visible])
     return "\n".join(format_value(v) for v in items)
