@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pystack"
+version = "0.1.0"
+description = "RPN calculator with a persistent stack and memory slots."
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.26"]
+
+[project.scripts]
+pst = "pystack.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.black]
+line-length = 79
