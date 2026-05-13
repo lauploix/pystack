@@ -96,6 +96,24 @@ def test_mixed_plus_errors_and_rolls_back(db_path, capsys):
     assert stack == ["a", 1]
 
 
+def test_b1a_compound_example(db_path, capsys):
+    # Equivalent to typing `pst "'a'" "'b'" 1 str + swap +` in bash,
+    # which leaves single-quoted python-string-literal tokens in argv.
+    rc, out, _ = run(
+        db_path,
+        "'a'",
+        "'b'",
+        "1",
+        "str",
+        "+",
+        "swap",
+        "+",
+        capsys=capsys,
+    )
+    assert rc == 0
+    assert out == '"b1a"\n'
+
+
 # --- slots --------------------------------------------------------------
 
 

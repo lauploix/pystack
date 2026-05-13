@@ -97,6 +97,15 @@ def test_plus_string_and_int_raises():
         s.exec(tokens=["'A'", "1", "+"])
 
 
+def test_b1a_compound_example():
+    # User example: "a" "b" 1 str + swap + -> "b1a"
+    # (Tokens shown here are the python-literal form that survives the
+    # shell when the user invokes `pst "'a'" "'b'" 1 str + swap +`.)
+    s = RpnStack()
+    s.exec(tokens=["'a'", "'b'", "1", "str", "+", "swap", "+"])
+    assert list(s) == ["b1a"]
+
+
 # --- sto / rcl / purge ---------------------------------------------------
 
 
