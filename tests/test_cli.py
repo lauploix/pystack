@@ -192,6 +192,19 @@ def test_repl_atomic_rollback_per_line(db_path, capsys, monkeypatch):
     assert stack == ["a", 1]
 
 
+def test_repl_blank_line_prints_stack(db_path, capsys, monkeypatch):
+    run(db_path, "1", "2", "+", capsys=capsys)
+    inputs = iter(["", "exit"])
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": next(inputs),
+    )
+    cli.main(["--db", db_path])
+    out = capsys.readouterr().out
+    # Stack [3] printed on entry, then again on the blank line.
+    assert out.count("3\n") >= 2
+
+
 def test_repl_handles_eof(db_path, capsys, monkeypatch):
     def boom(prompt=""):
         raise EOFError

@@ -83,6 +83,7 @@ def _run_repl(conn):
             break
         line = line.strip()
         if not line:
+            _print_stack(stack_items)
             continue
         if line == "exit":
             break
