@@ -145,6 +145,9 @@ class RpnStack:
     def _exec_pi(self):
         self.push(np.pi)
 
+    def _exec_i(self):
+        self.push(1j)
+
     # execute the size operation
     def _exec_size(self):
         self.push(self.size())
