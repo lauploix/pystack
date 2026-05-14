@@ -171,3 +171,57 @@ def test_imaginary_unit_squared_is_minus_one():
     s = RpnStack()
     s.exec(tokens="i i *".split())
     assert list(s) == [-1 + 0j]
+
+
+# --- logarithms (numpy convention) ---------------------------------------
+
+
+def test_log_is_natural_log():
+    s = RpnStack()
+    s.exec(tokens="e log".split())
+    assert list(s) == [1.0]
+
+
+def test_log10_of_10_is_1():
+    s = RpnStack()
+    s.exec(tokens="10 log10".split())
+    assert list(s) == [1.0]
+
+
+def test_log10_of_100_is_2():
+    s = RpnStack()
+    s.exec(tokens="100 log10".split())
+    assert list(s) == [2.0]
+
+
+# --- tolist --------------------------------------------------------------
+
+
+def test_tolist_builds_list_from_top_n():
+    s = RpnStack()
+    s.exec(tokens=["'a'", "'b'", "2", "tolist"])
+    assert list(s) == [["a", "b"]]
+
+
+def test_tolist_preserves_stack_order():
+    s = RpnStack()
+    s.exec(tokens="1 2 3 3 tolist".split())
+    assert list(s) == [[1, 2, 3]]
+
+
+def test_tolist_leaves_lower_items_on_stack():
+    s = RpnStack()
+    s.exec(tokens="99 1 2 2 tolist".split())
+    assert list(s) == [99, [1, 2]]
+
+
+def test_tolist_zero_pushes_empty_list():
+    s = RpnStack()
+    s.exec(tokens="0 tolist".split())
+    assert list(s) == [[]]
+
+
+def test_tolist_not_enough_items_raises():
+    s = RpnStack(raises=True)
+    with pytest.raises(StackException):
+        s.exec(tokens="1 5 tolist".split())
