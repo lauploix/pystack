@@ -247,6 +247,11 @@ class RpnStack:
         # shape = (len(values), 1)
         self.push(out)
 
+    # pop n, then pop n items and push them as a list (in stack order)
+    def _exec_tolist(self):
+        n = self.pop()
+        self.push(self.__pop_as_list(n))
+
     # execute the drop2
     def _exec_drop2(self):
         self.__stack = self.__stack[:-2]
