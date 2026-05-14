@@ -252,6 +252,10 @@ class RpnStack:
         n = self.pop()
         self.push(self.__pop_as_list(n))
 
+    # pop top, push Python's len() of it
+    def _exec_len(self):
+        self.push(len(self.pop()))
+
     # execute the drop2
     def _exec_drop2(self):
         self.__stack = self.__stack[:-2]
