@@ -225,3 +225,36 @@ def test_tolist_not_enough_items_raises():
     s = RpnStack(raises=True)
     with pytest.raises(StackException):
         s.exec(tokens="1 5 tolist".split())
+
+
+# --- len -----------------------------------------------------------------
+
+
+def test_len_of_list():
+    s = RpnStack()
+    s.exec(tokens="1 2 3 3 tolist len".split())
+    assert list(s) == [3]
+
+
+def test_len_of_string():
+    s = RpnStack()
+    s.exec(tokens=["'hello'", "len"])
+    assert list(s) == [5]
+
+
+def test_len_of_empty_list():
+    s = RpnStack()
+    s.exec(tokens="0 tolist len".split())
+    assert list(s) == [0]
+
+
+def test_len_of_tuple_literal():
+    s = RpnStack()
+    s.exec(tokens=["'(1, 2, 3, 4)'", "eval", "len"])
+    assert list(s) == [4]
+
+
+def test_len_of_int_raises():
+    s = RpnStack(raises=True)
+    with pytest.raises(StackException):
+        s.exec(tokens="42 len".split())
